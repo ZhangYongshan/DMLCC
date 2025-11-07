@@ -44,21 +44,16 @@ In the following steps, PyTorch **with CUDA 11.8** is used by default. If your v
 
 ### Detailed Instructions
 
-**Step 0:** Install Anaconda3
+Install PyTorch with CUDA 11.8, and create a CUDA toolkit that is only available to the current virtual environment.
 
-**Step 1:** Create and activate a virtual environment named `MSAEMamba`.
-
-**Step 2:** Install PyTorch with CUDA 11.8, and create a CUDA toolkit that is only available to the current virtual environment.
-
-**Step 3:** Install Mamba and related dependencies:
+Install Mamba and related dependencies:
 
 ```
 pip install causal-conv1d==1.2.0.post2
 pip install mamba-ssm==1.2.0.post1
 ```
 
-**Step 4:** Install other model dependencies.
- Some dependencies come bundled with PyTorch. If any are missing, please install them according to the error messages.
+Install other model dependencies. （Some dependencies come bundled with PyTorch. If any are missing, please install them according to the error messages.）
 
 ```
 pip install scipy
