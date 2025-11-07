@@ -58,12 +58,6 @@ class SpaMamba(nn.Module):
             d_conv=2,  # Local convolution width
             expand=2,  # Block expansion factor
         )
-        # self.mamba2 = Mamba(  # This module uses roughly 3 * expand * d_model^2 parameters
-        #     d_model=channels,  # Model dimension d_model
-        #     d_state=num_state,  # SSM state expansion factor
-        #     d_conv=3,  # Local convolution width
-        #     expand=2,  # Block expansion factor
-        # )
         if self.use_proj:
             self.proj = nn.Sequential(
                 nn.GroupNorm(group_num, channels),
@@ -170,14 +164,7 @@ class cross_fuison(nn.Module):
         self.max_value=(output_size*4)**0.5
         self.scale_factor = torch.nn.Parameter(torch.tensor(output_size**0.5)) # 缩放因子，可学习的参数，初始化为输出维度的根号
         self.extand=nn.Linear(output_size,input_size)
-        # self.proj_fusion1 = nn.Sequential(
-        #         nn.GroupNorm(4, input_size),
-        #         nn.SiLU()
-        #     )
-        # self.proj_fusion2 = nn.Sequential(
-        #         nn.GroupNorm(4, input_size),
-        #         nn.SiLU()
-        #     )
+
     def forward(self, x1,x2):
         hsi_Q=self.W_Q_hsi(x1)
         hsi_K=self.W_K_hsi(x1)
@@ -186,11 +173,11 @@ class cross_fuison(nn.Module):
         lidar_K=self.W_K_lidar(x2)
         lidar_V=self.W_V(x2)
         scale_factor=torch.clamp(self.scale_factor, min=self.epsilon, max=self.max_value)
-        # print(f"self.scale_factor: {self.scale_factor.item()},scale_factor: {scale_factor.item()}")
+
         f_fusion1=F.softmax(torch.mm(hsi_Q, lidar_K.T)/(scale_factor ** 0.5),dim=-1)@hsi_V
         f_fusion2=F.softmax(torch.mm(lidar_Q, hsi_K.T) / (scale_factor ** 0.5),dim=-1) @lidar_V
         return self.extand(f_fusion1),self.extand(f_fusion2)
-        # return self.proj_fusion1(self.extand(f_fusion1)),self.proj_fusion2(self.extand(f_fusion2))
+
 
 class BothMamba(nn.Module):
     def __init__(self, channels,output_size ,token_num, num_state,use_residual, group_num=4, use_att=True):
@@ -203,10 +190,7 @@ class BothMamba(nn.Module):
         self.enhance_hsi= Enhance(output_size, num_state, use_residual=use_residual, group_num=group_num)
         self.enhance_lidar = Enhance(output_size, num_state, use_residual=use_residual, group_num=group_num)
         self.cross_f=cross_fuison(output_size,int(output_size/2))
-        # self.proj = nn.Sequential(
-        #         nn.GroupNorm(group_num, channels),
-        #         nn.SiLU()
-        #     )
+
     def forward(self, x):
         B,C=x[0].shape
         x=list(x)
@@ -254,36 +238,12 @@ class Net(nn.Module):
         x= [self.encouders[0](x[0]), self.encouders[1](x[1])]#编码器映射后的特征
         for i,layer in enumerate(self.layers):
             x = layer(x)
-            # if i!=(len(self.layers)-1):
-            #     x=[self.act(x[0]),self.act(x[1])]
         labels_pro = [self.label_learning_module(x[0]), self.label_learning_module(x[1])]
         labels=(labels_pro[0]+labels_pro[1])/2
-        # labels_01_09=0.1*labels_pro[0]+0.9*labels_pro[1]
-        # labels_02_08=0.2*labels_pro[0]+0.8*labels_pro[1]
-        # labels_03_07=0.3*labels_pro[0]+0.7*labels_pro[1]
-        # labels_04_06=0.4*labels_pro[0]+0.6*labels_pro[1]
-        # labels_05_05=0.5*labels_pro[0]+0.5*labels_pro[1]
-        # labels_06_04=0.6*labels_pro[0]+0.4*labels_pro[1]
-        # labels_07_03=0.7*labels_pro[0]+0.3*labels_pro[1]
-        # labels_08_02=0.8*labels_pro[0]+0.2*labels_pro[1]
-        # labels_09_01=0.9*labels_pro[0]+0.1*labels_pro[1]
-        # labels=0.3*labels_pro[0]+0.7*labels_pro[1]
-        labels=torch.argmax(labels,dim=1)
-        return labels_pro, x,labels#,labels_01_09,labels_02_08,labels_03_07,labels_04_06,labels_05_05,labels_06_04,labels_07_03,labels_08_02,labels_09_01
 
-    # def forward_cluster(self,x):
-    #     x= [self.encouders[0](x[0]), self.encouders[1](x[1])]
-    #     for i,layer in enumerate(self.layers):
-    #         x = layer(x)
-    #         # if i!=(len(self.layers)-1):
-    #         #     x=[self.act(x[0]),self.act(x[1])]
-    #     label_pro1=self.label_learning_module(x[0])
-    #     label_pro2=self.label_learning_module(x[1])
-    #     # feature=0.5*x[0]+0.5*x[1]
-    #     # label_pro=self.label_learning_module(feature)
-    #     label_pro=(label_pro1+label_pro2)/2
-    #     labels=torch.argmax(label_pro,dim=1)
-    #     return labels
+        labels=torch.argmax(labels,dim=1)
+        return labels_pro, x,labels
+
 
     def pre_train(self,x, dim_high):
         re_features = list()
@@ -293,12 +253,3 @@ class Net(nn.Module):
             re_feature = self.decouders[idx](feature, C, H, W)
             re_features.append(re_feature)
         return re_features
-    
-    # def get_feature(self,x):
-    #     x= [self.encouders[0](x[0]), self.encouders[1](x[1])]
-    #     for i,layer in enumerate(self.layers):
-    #         x = layer(x)
-    #     feature=0.5*x[0]+0.5*x[1]
-    #     # label_pro=self.label_learning_module(feature)
-    #     # labels=torch.argmax(label_pro,dim=1)
-    #     return feature
